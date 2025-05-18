@@ -295,10 +295,6 @@ public class Client extends Application {
 
         table.getColumns().addAll(nameColumn, winsColumn, PointsColumn, DateColumn);
 
-        // отправка сообщения на получение данных в потоке
-//        new Thread(() -> {
-//
-//        }).start();
         Message getLBmessage = new Message();
         getLBmessage.setType(MessageType.GET_LEADERBOARD);
         out.println(gson.toJson(getLBmessage));

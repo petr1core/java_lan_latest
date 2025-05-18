@@ -71,7 +71,7 @@ public class Server {
 
         synchronized (clients) {
             for (ClientHandler client : clients) {
-                if (client.getNickname() != null) {
+                if (client.getNickname() != null && !client.getNickname().equals("spectator_android")) {
                     nicknames.add(client.getNickname());
                     if(client.isReady()) readyPlayers.add(client.getNickname());
                 }
@@ -394,24 +394,31 @@ class ClientHandler extends Thread {
             if (joinMessage == null) return;
 
             Message joinMsg = Server.gson.fromJson(joinMessage, Message.class);
+
             if (joinMsg.getType() == MessageType.JOIN) {
                 // Обработка nickname
                 nickname = joinMsg.getContent().trim();
-
-                // Проверка уникальности
-                synchronized (clients) {
-                    if (clients.stream().anyMatch(c -> c.nickname.equals(nickname))) {
-                        sendMessage(Server.gson.toJson(new Message(MessageType.ERROR, "Name taken")));
-                        return;
+                if (joinMsg.getContent() != null && joinMsg.getContent().startsWith("spectator")) {
+                    // spectator - не добавляем в clients, не участвует в лобби
+                    this.nickname = joinMsg.getContent();
+                    // Можно сохранить сокет, чтобы отвечать на запросы, но не добавлять в clients
+                    System.out.println("Spectator connected: " + this.nickname);
+                } else {
+                    // Проверка уникальности
+                    synchronized (clients) {
+                        if (clients.stream().anyMatch(c -> c.nickname.equals(nickname))) {
+                            sendMessage(Server.gson.toJson(new Message(MessageType.ERROR, "Name taken")));
+                            return;
+                        }
                     }
-                }
 
-                clients.add(this);
-                this.isReady = false;
-                Server.saveUser(nickname);
-                Server.updateLastSeen(nickname);
-                //System.out.println(DataBase.dbPath);
-                System.out.println("Registered: " + nickname);
+                    clients.add(this);
+                    this.isReady = false;
+                    Server.saveUser(nickname);
+                    Server.updateLastSeen(nickname);
+                    //System.out.println(DataBase.dbPath);
+                    System.out.println("Registered: " + nickname);
+                }
             }
 
             String inputLine;
@@ -496,6 +503,7 @@ class ClientHandler extends Thread {
                         lbResponse.setLeaders(leaders);
 
                         System.out.println("[SERVER] Sending leaderboard to: " + nickname);
+                        System.out.println("[SERVER] JSON: " + Server.gson.toJson(lbResponse));
                         sendMessage(Server.gson.toJson(lbResponse));
                         break;
 
